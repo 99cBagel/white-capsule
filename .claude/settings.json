@@ -1,0 +1,1 @@
+{"hooks":{"SessionStart":[{"hooks":[{"command":"cat \"$CLAUDE_PROJECT_DIR/state/index.md\" \"$CLAUDE_PROJECT_DIR/state/decisions.md\"","type":"command"}],"matcher":"*"}]}}
