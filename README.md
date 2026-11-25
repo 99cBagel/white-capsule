@@ -64,12 +64,12 @@ white-capsule/
 │   └── seed.mjs               builds the D1 seed SQL from the capsule files
 ├── package.json               scripts: seed, deploy, test
 └── assets/
-    ├── logo-1024.png          logo, 1024×1024
-    ├── icon-256.png           large icon, 256×256
-    ├── icon-64.png            small icon, 64×64
+    ├── logo-1024.png          logo, 1024×1024, transparent background
+    ├── icon-256.png           large icon, 256×256, transparent background
+    ├── icon-64.png            small icon, 64×64, transparent background
     ├── favicon.ico            favicon (16/32/48/64)
-    ├── white-capsule-logo.psd layered work copy (8 layers)
-    └── white-capsule-logo.svg vector trace (5 colors)
+    ├── white-capsule-logo.psd layered work copy (8 layers, transparent background)
+    └── white-capsule-logo.svg vector trace (5 colors, transparent background)
 ```
 
 ## The three rules of this capsule

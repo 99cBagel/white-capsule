@@ -16,6 +16,11 @@ entry did not happen.
   a separate manual deploy and is not served by this worker.
 - Repo is now the source of truth: capsule files live at the repo root
   (root layout); the local white-capsule-snail32/ scaffold is superseded.
+- Logo background is now transparent (all six assets): the outer
+  background is transparent; the capsule's white top and the bot's white
+  interior stay solid. PSD: the Background layer is replaced by a
+  Capsule fill layer. SVG: the background rect is removed and the fill
+  is a separate white path; letter counters are transparent.
 
 ## 0.3.0 — 2026-11-25
 
