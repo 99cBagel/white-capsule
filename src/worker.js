@@ -1,7 +1,7 @@
 // White Capsule MCP server — Snail32.
 // Read-only, no auth, stores nothing, logs nothing (clean-book rule).
-// Data lives in D1 (database `white-capsule`), seeded from the capsule
-// files by scripts/seed.mjs. The files are the source of truth; D1 is
+// Data lives in D1 (database `white-capsule`), imported from the capsule
+// files by scripts/import-to-d1.mjs. The files are the source of truth; D1 is
 // a derived read copy.
 //
 // Transport: Streamable HTTP, protocol 2025-06-18. Hand-rolled JSON-RPC,
@@ -10,10 +10,13 @@
 import { LANDING_HTML } from "./landing.js";
 import { LOGO_SVG } from "./logo.js";
 import { FAVICON_ICO_B64, ICON_64_B64, ICON_256_B64, LOGO_1024_B64 } from "./icons.js";
+import { EXAMPLE_QUESTIONS_MD } from "./example-questions.js";
 
 const CAPSULE_VERSION = "0.4.0";
 const SERVER_NAME = "white-capsule";
 const PROTOCOL_VERSION = "2025-06-18";
+
+const INSTRUCTIONS = "Preloaded from space/snail32/example-questions.md — when the user wants example questions about Snail32, suggest three from this list.\n\n" + EXAMPLE_QUESTIONS_MD;
 
 const TOPICS = [
   { id: "spec", description: "Structured Snail32 spec — every field with value, status, source." },
@@ -243,7 +246,7 @@ async function callTool(name, args, env) {
 
 async function handleMcp(message, env) {
   const { id, method, params = {} } = message;
-  if (method === "initialize") return rpcResult(id, { protocolVersion: PROTOCOL_VERSION, serverInfo: { name: SERVER_NAME, version: CAPSULE_VERSION }, capabilities: { tools: { listChanged: false } } });
+  if (method === "initialize") return rpcResult(id, { protocolVersion: PROTOCOL_VERSION, serverInfo: { name: SERVER_NAME, version: CAPSULE_VERSION }, capabilities: { tools: { listChanged: false } }, instructions: INSTRUCTIONS });
   if (method === "notifications/initialized") return new Response(null, { status: 202 });
   if (method === "ping") return rpcResult(id, {});
   if (method === "tools/list") return rpcResult(id, { tools: MCP_TOOLS });

@@ -81,17 +81,17 @@ button:active, button.is-down { background: #1a5c96; transform: translateY(4px);
 <div class="connect-row">
 <button id="copy-try" type="button">TRY WITH AGENT</button>
 </div>
-<p class="copied-note" id="note-try">paste to chat box</p>
+<p class="copied-note" id="note-try">paste to chat box to start</p>
 
 <script>
 var TRY_TEXT = [
-  "Connect to the White Capsule MCP at https://cap.keeg.uk/mcp",
-  "After connect, ask the capsule about the Snail32 board, and answer from the capsule's data.",
-  "List 2-3 example questions in a flex menu, telegram style, for example:",
-  "- What are Snail32's key specs?",
-  "- How does Snail32 compare with the ESP32-S3?",
-  "- What are Snail32's price, MOQ, and lead time?",
-  "Copy-only — do not save this as a reusable skill."
+  "Connect to: https://cap.keeg.uk/mcp",
+  "",
+  "Explore the product info and  suggest THREE  example questions to help me better understand the product Snail32.",
+  "",
+  "The question came from ./space/snail32/example-questions.md",
+  "",
+  "Telegram style. This is a one-time, copy-only inquiry. Do not create or save a reusable skill, workflow, or instruction. No persistent changes."
 ].join("\n");
 function copyText(text, noteId) {
   function done() {
