@@ -7,9 +7,6 @@
 // Transport: Streamable HTTP, protocol 2025-06-18. Hand-rolled JSON-RPC,
 // same shape as devices-control-worker (no SDK, no dependencies).
 
-import { LANDING_HTML } from "./landing.js";
-import { LOGO_SVG } from "./logo.js";
-import { FAVICON_ICO_B64, ICON_64_B64, ICON_256_B64, LOGO_1024_B64 } from "./icons.js";
 import { EXAMPLE_QUESTIONS_MD } from "./example-questions.js";
 
 const CAPSULE_VERSION = "0.4.0";
@@ -257,23 +254,12 @@ async function handleMcp(message, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === "/") {
-      return new Response(LANDING_HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
-    }
-    if (url.pathname === "/assets/white-capsule-logo.svg") {
-      return new Response(LOGO_SVG, { headers: { "content-type": "image/svg+xml" } });
-    }
-    const ICON_FILES = {
-      "/favicon.ico": [FAVICON_ICO_B64, "image/x-icon"],
-      "/assets/favicon.ico": [FAVICON_ICO_B64, "image/x-icon"],
-      "/assets/icon-64.png": [ICON_64_B64, "image/png"],
-      "/assets/icon-256.png": [ICON_256_B64, "image/png"],
-      "/assets/logo-1024.png": [LOGO_1024_B64, "image/png"],
-    };
-    const icon = ICON_FILES[url.pathname];
-    if (icon) {
-      const bytes = Uint8Array.from(atob(icon[0]), (c) => c.charCodeAt(0));
-      return new Response(bytes, { headers: { "content-type": icon[1] } });
+    // Landing page and assets are served from public/ by the assets
+    // platform before this Worker runs. Only /mcp and /health reach here,
+    // plus the browser's automatic /favicon.ico probe, which redirects to
+    // the single copy in public/assets/.
+    if (url.pathname === "/favicon.ico") {
+      return Response.redirect(new URL("/assets/favicon.ico", url), 301);
     }
     if (url.pathname === "/health") {
       return json({ status: "ok", server: SERVER_NAME, capsule_version: CAPSULE_VERSION, d1: Boolean(env.DB) });
