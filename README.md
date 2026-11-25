@@ -67,7 +67,9 @@ white-capsule/
     ├── logo-1024.png          logo, 1024×1024
     ├── icon-256.png           large icon, 256×256
     ├── icon-64.png            small icon, 64×64
-    └── favicon.ico            favicon (16/32/48/64)
+    ├── favicon.ico            favicon (16/32/48/64)
+    ├── white-capsule-logo.psd layered work copy (8 layers)
+    └── white-capsule-logo.svg vector trace (5 colors)
 ```
 
 ## The three rules of this capsule
