@@ -62,7 +62,12 @@ white-capsule/
 ├── wrangler.jsonc             worker config: D1 binding, cap.keeg.uk/mcp route
 ├── scripts/
 │   └── seed.mjs               builds the D1 seed SQL from the capsule files
-└── package.json               scripts: seed, deploy, test
+├── package.json               scripts: seed, deploy, test
+└── assets/
+    ├── logo-1024.png          logo, 1024×1024
+    ├── icon-256.png           large icon, 256×256
+    ├── icon-64.png            small icon, 64×64
+    └── favicon.ico            favicon (16/32/48/64)
 ```
 
 ## The three rules of this capsule
