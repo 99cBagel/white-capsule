@@ -259,7 +259,7 @@ export default {
     // plus the browser's automatic /favicon.ico probe, which redirects to
     // the single copy in public/assets/.
     if (url.pathname === "/favicon.ico") {
-      return Response.redirect(new URL("/assets/favicon.ico", url), 301);
+      return Response.redirect(new URL("/assets/favicon.ico%20from%20S%20logo", url), 301);
     }
     if (url.pathname === "/health") {
       return json({ status: "ok", server: SERVER_NAME, capsule_version: CAPSULE_VERSION, d1: Boolean(env.DB) });
