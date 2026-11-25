@@ -1,7 +1,7 @@
 // White Capsule MCP server — Snail32.
 // Read-only, no auth, stores nothing, logs nothing (clean-book rule).
 // Data lives in D1 (database `white-capsule`), imported from the capsule
-// files by scripts/import-to-d1.mjs. The files are the source of truth; D1 is
+// files by src/import-to-d1.mjs. The files are the source of truth; D1 is
 // a derived read copy.
 //
 // Transport: Streamable HTTP, protocol 2025-06-18. Hand-rolled JSON-RPC,

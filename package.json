@@ -1,1 +1,1 @@
-{"name":"white-capsule","private":true,"scripts":{"deploy":"wrangler deploy","import-to-d1":"node scripts/import-to-d1.mjs","test":"node --test test/"},"type":"module"}
+{"name":"white-capsule","private":true,"scripts":{"deploy":"wrangler deploy","import-to-d1":"node src/import-to-d1.mjs","test":"node --test test/"},"type":"module"}
