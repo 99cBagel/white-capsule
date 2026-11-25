@@ -1,1 +1,1 @@
-{"compatibility_date":"2026-11-25","d1_databases":[{"binding":"DB","database_id":"REPLACE-ME-AFTER-D1-CREATE","database_name":"white-capsule"}],"main":"src/worker.js","name":"white-capsule","routes":[{"custom_domain":false,"pattern":"cap.keeg.uk/mcp*"}],"workers_dev":true}
+{"compatibility_date":"2026-11-25","d1_databases":[{"binding":"DB","database_id":"be9df0f3-e5b5-41a6-b1e7-ba8a1511daab","database_name":"white-capsule"}],"main":"src/worker.js","name":"white-capsule","routes":[{"custom_domain":false,"pattern":"cap.keeg.uk/mcp*"}],"workers_dev":true}
