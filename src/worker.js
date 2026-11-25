@@ -9,6 +9,7 @@
 
 import { LANDING_HTML } from "./landing.js";
 import { LOGO_SVG } from "./logo.js";
+import { FAVICON_ICO_B64, ICON_64_B64, ICON_256_B64, LOGO_1024_B64 } from "./icons.js";
 
 const CAPSULE_VERSION = "0.4.0";
 const SERVER_NAME = "white-capsule";
@@ -256,8 +257,20 @@ export default {
     if (url.pathname === "/") {
       return new Response(LANDING_HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
     }
-    if (url.pathname === "/assets/white-capsule-logo.svg" || url.pathname === "/favicon.ico") {
+    if (url.pathname === "/assets/white-capsule-logo.svg") {
       return new Response(LOGO_SVG, { headers: { "content-type": "image/svg+xml" } });
+    }
+    const ICON_FILES = {
+      "/favicon.ico": [FAVICON_ICO_B64, "image/x-icon"],
+      "/assets/favicon.ico": [FAVICON_ICO_B64, "image/x-icon"],
+      "/assets/icon-64.png": [ICON_64_B64, "image/png"],
+      "/assets/icon-256.png": [ICON_256_B64, "image/png"],
+      "/assets/logo-1024.png": [LOGO_1024_B64, "image/png"],
+    };
+    const icon = ICON_FILES[url.pathname];
+    if (icon) {
+      const bytes = Uint8Array.from(atob(icon[0]), (c) => c.charCodeAt(0));
+      return new Response(bytes, { headers: { "content-type": icon[1] } });
     }
     if (url.pathname === "/health") {
       return json({ status: "ok", server: SERVER_NAME, capsule_version: CAPSULE_VERSION, d1: Boolean(env.DB) });

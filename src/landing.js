@@ -6,7 +6,18 @@ export const LANDING_HTML = `<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>White Capsule Service (Example Snail32 Board)</title>
-<link rel="icon" href="/assets/white-capsule-logo.svg">
+<link rel="icon" href="/assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/svg+xml" href="/assets/white-capsule-logo.svg">
+<link rel="icon" type="image/png" sizes="64x64" href="/assets/icon-64.png">
+<link rel="icon" type="image/png" sizes="256x256" href="/assets/icon-256.png">
+<link rel="apple-touch-icon" href="/assets/icon-256.png">
+<meta name="description" content="Snail32 White Capsule — a concept microcontroller board. Connect an agent to the capsule MCP for spec, comparison, sourcing, and compliance data.">
+<meta name="theme-color" content="#267cd1">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://cap.keeg.uk/">
+<meta property="og:title" content="White Capsule Service (Example Snail32 Board)">
+<meta property="og:description" content="Turning White Papers into Agent-Ready Knowledge">
+<meta property="og:image" content="https://cap.keeg.uk/assets/logo-1024.png">
 <style>
 * { box-sizing: border-box; }
 body { margin: 0; background: #f7fafc; color: #000; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.55; }
@@ -58,7 +69,7 @@ button:active { transform: translateY(1px); }
 <span class="endpoint-text">https://cap.keeg.uk/mcp</span>
 <button id="copy-endpoint" type="button" class="small">COPY</button>
 </div>
-<p class="copied-note" id="note-endpoint">paste the endpoint to agent</p>
+<p class="copied-note" id="note-endpoint">paste to chat box</p>
 <p class="videos">Connect demo video:
 <a href="https://snail-eyes.keeg.uk/media/assets/how-to-connect-meta-muse.mp4" target="_blank" rel="noopener">&#9654; Muse</a> &middot;
 <a href="https://snail-eyes.keeg.uk/media/assets/how-to-connect-chatgpt.mp4" target="_blank" rel="noopener">&#9654; ChatGPT</a> &middot;
@@ -69,7 +80,7 @@ button:active { transform: translateY(1px); }
 <div class="connect-row">
 <button id="copy-try" type="button">TRY WITH AGENT</button>
 </div>
-<p class="copied-note" id="note-try">paste the endpoint to agent</p>
+<p class="copied-note" id="note-try">paste to chat box</p>
 
 <script>
 var TRY_TEXT = [
