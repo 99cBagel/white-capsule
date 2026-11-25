@@ -36,9 +36,10 @@ li { margin: 4px 0; }
 .mockup { color: #8c8c8c; font-size: 14.5px; }
 .connect-row { display: flex; gap: 10px; align-items: stretch; margin: 14px 0 4px; flex-wrap: wrap; }
 .endpoint-text { font-style: italic; font-weight: 300; font-size: 17px; overflow-wrap: anywhere; }
-button.small { font-size: 13px; font-weight: 600; padding: 4px 14px; min-height: 32px; border-radius: 6px; }
-button { appearance: none; border: 0; border-radius: 8px; background: #267cd1; color: #fff; font-size: 16px; font-weight: 600; padding: 10px 22px; cursor: pointer; min-height: 44px; }
-button:active { transform: translateY(1px); }
+button.small { font-size: 13px; font-weight: 600; padding: 4px 14px; min-height: 32px; border-radius: 6px; box-shadow: 0 2px 0 #1a5c96, 0 4px 8px rgba(0, 10, 18, 0.18); }
+button.small:active { transform: translateY(2px); box-shadow: 0 0 0 #1a5c96, 0 1px 2px rgba(0, 10, 18, 0.18); }
+button { appearance: none; border: 0; border-radius: 8px; background: #267cd1; color: #fff; font-size: 16px; font-weight: 600; padding: 10px 22px; cursor: pointer; min-height: 44px; box-shadow: 0 3px 0 #1a5c96, 0 6px 12px rgba(0, 10, 18, 0.18); transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s ease, background 0.15s ease; }
+button:active { transform: translateY(3px); box-shadow: 0 0 0 #1a5c96, 0 2px 4px rgba(0, 10, 18, 0.18); transition: transform 0.04s ease, box-shadow 0.04s ease; }
 .videos a { color: #267cd1; text-decoration: none; font-weight: 600; }
 .copied-note { display: none; color: #000; font-size: 14.5px; margin: 2px 0 10px; }
 @media print { body { background: #fff; } button { display: none; } }
