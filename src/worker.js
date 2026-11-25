@@ -7,6 +7,9 @@
 // Transport: Streamable HTTP, protocol 2025-06-18. Hand-rolled JSON-RPC,
 // same shape as devices-control-worker (no SDK, no dependencies).
 
+import { LANDING_HTML } from "./landing.js";
+import { LOGO_SVG } from "./logo.js";
+
 const CAPSULE_VERSION = "0.4.0";
 const SERVER_NAME = "white-capsule";
 const PROTOCOL_VERSION = "2025-06-18";
@@ -250,6 +253,12 @@ async function handleMcp(message, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === "/") {
+      return new Response(LANDING_HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
+    }
+    if (url.pathname === "/assets/white-capsule-logo.svg" || url.pathname === "/favicon.ico") {
+      return new Response(LOGO_SVG, { headers: { "content-type": "image/svg+xml" } });
+    }
     if (url.pathname === "/health") {
       return json({ status: "ok", server: SERVER_NAME, capsule_version: CAPSULE_VERSION, d1: Boolean(env.DB) });
     }
