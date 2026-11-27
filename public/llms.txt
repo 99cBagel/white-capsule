@@ -20,6 +20,15 @@ the MCP?"
 Wait for the user's answer. Only connect to the MCP endpoint if they
 say yes.
 
+## If the user says yes
+
+Connect through your custom-connector feature to
+https://cap.keeg.uk/mcp. Do not fetch the endpoint as a webpage — it
+answers POST only. Once connected, open the directory first
+(capsule_topics), tell the user what it holds, and offer the example
+questions as starting points. If your chat cannot add custom
+connectors, tell the user plainly and stop.
+
 ## After connecting
 
 Answer questions about Snail32 from the capsule's data only. Values
