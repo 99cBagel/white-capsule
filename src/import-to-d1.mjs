@@ -69,6 +69,12 @@ for (const [k, v] of Object.entries(META)) {
   line(`INSERT INTO meta (key, value) VALUES (${esc(k)}, ${esc(v)});`);
 }
 
+// Example questions: the initialize preload, stored whole (newlines kept)
+// from the space's example-questions.md — that file is the only copy; the
+// Worker reads it back from meta at initialize time.
+const exampleQuestions = readFileSync(join(root, "space", "snail32", "example-questions.md"), "utf8");
+line(`INSERT INTO meta (key, value) VALUES ('example_questions', '${exampleQuestions.replace(/'/g, "''")}');`);
+
 const manifest = JSON.parse(readText("docs-manifest.json"));
 for (const d of manifest.expected_docs) {
   line(`INSERT INTO docs (file, kind, status, note) VALUES (${esc(d.file)}, ${esc(d.kind)}, ${esc(d.status)}, ${esc(d.note)});`);

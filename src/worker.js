@@ -8,14 +8,14 @@
 // Transport: Streamable HTTP, protocol 2025-06-18. Hand-rolled JSON-RPC,
 // same shape as devices-control-worker (no SDK, no dependencies).
 
-import { EXAMPLE_QUESTIONS_MD } from "./example-questions.js";
-
 const CAPSULE_VERSION = "0.5.0";
 const SERVER_NAME = "white-capsule";
 const PROTOCOL_VERSION = "2025-06-18";
 const HSTS = "max-age=31536000; includeSubDomains";
 
-const INSTRUCTIONS = "Preloaded from space/snail32/example-questions.md — when the user wants example questions about Snail32, suggest three from this list.\n\n" + EXAMPLE_QUESTIONS_MD;
+// Initialize instructions are built at request time from D1 meta
+// 'example_questions', imported from space/snail32/example-questions.md —
+// that .md is the only copy; there is no JS duplicate to keep in step.
 
 const TOPICS = [
   { id: "datasheet", description: "Snail32 datasheet — spec tables vs the ESP32-S3 reference, head-to-head comparison, certifications, ordering information." },
@@ -231,7 +231,15 @@ async function callTool(name, args, env) {
 
 async function handleMcp(message, env) {
   const { id, method, params = {} } = message;
-  if (method === "initialize") return rpcResult(id, { protocolVersion: PROTOCOL_VERSION, serverInfo: { name: SERVER_NAME, version: CAPSULE_VERSION }, capabilities: { tools: { listChanged: false } }, instructions: INSTRUCTIONS });
+  if (method === "initialize") {
+    let questions = "";
+    try {
+      const row = await env.DB.prepare("SELECT value FROM meta WHERE key = 'example_questions'").first();
+      if (row && row.value) questions = row.value;
+    } catch { /* instructions fall back to the header line alone */ }
+    const instructions = "Preloaded from space/snail32/example-questions.md — when the user wants example questions about Snail32, suggest three from this list." + (questions ? "\n\n" + questions : "");
+    return rpcResult(id, { protocolVersion: PROTOCOL_VERSION, serverInfo: { name: SERVER_NAME, version: CAPSULE_VERSION }, capabilities: { tools: { listChanged: false } }, instructions });
+  }
   if (method === "notifications/initialized") return new Response(null, { status: 202, headers: { "strict-transport-security": HSTS } });
   if (method === "ping") return rpcResult(id, {});
   if (method === "tools/list") return rpcResult(id, { tools: MCP_TOOLS });
