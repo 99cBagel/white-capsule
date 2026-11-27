@@ -12,6 +12,7 @@ import { EXAMPLE_QUESTIONS_MD } from "./example-questions.js";
 const CAPSULE_VERSION = "0.4.0";
 const SERVER_NAME = "white-capsule";
 const PROTOCOL_VERSION = "2025-06-18";
+const HSTS = "max-age=31536000; includeSubDomains";
 
 const INSTRUCTIONS = "Preloaded from space/snail32/example-questions.md — when the user wants example questions about Snail32, suggest three from this list.\n\n" + EXAMPLE_QUESTIONS_MD;
 
@@ -76,13 +77,13 @@ const MCP_TOOLS = [
 ];
 
 function json(value, status = 200) {
-  return Response.json(value, { status, headers: { "cache-control": "no-store" } });
+  return Response.json(value, { status, headers: { "cache-control": "no-store", "strict-transport-security": HSTS } });
 }
 function rpcResult(id, result) {
-  return Response.json({ jsonrpc: "2.0", id, result });
+  return Response.json({ jsonrpc: "2.0", id, result }, { headers: { "strict-transport-security": HSTS } });
 }
 function rpcError(id, code, message) {
-  return Response.json({ jsonrpc: "2.0", id: id ?? null, error: { code, message } });
+  return Response.json({ jsonrpc: "2.0", id: id ?? null, error: { code, message } }, { headers: { "strict-transport-security": HSTS } });
 }
 function toolResult(value, isError = false) {
   return {
@@ -244,7 +245,7 @@ async function callTool(name, args, env) {
 async function handleMcp(message, env) {
   const { id, method, params = {} } = message;
   if (method === "initialize") return rpcResult(id, { protocolVersion: PROTOCOL_VERSION, serverInfo: { name: SERVER_NAME, version: CAPSULE_VERSION }, capabilities: { tools: { listChanged: false } }, instructions: INSTRUCTIONS });
-  if (method === "notifications/initialized") return new Response(null, { status: 202 });
+  if (method === "notifications/initialized") return new Response(null, { status: 202, headers: { "strict-transport-security": HSTS } });
   if (method === "ping") return rpcResult(id, {});
   if (method === "tools/list") return rpcResult(id, { tools: MCP_TOOLS });
   if (method === "tools/call") return rpcResult(id, await callTool(params.name, params.arguments || {}, env));
@@ -259,7 +260,7 @@ export default {
     // plus the browser's automatic /favicon.ico probe, which redirects to
     // the single copy in public/assets/.
     if (url.pathname === "/favicon.ico") {
-      return Response.redirect(new URL("/assets/favicon.ico%20from%20S%20logo", url), 301);
+      return new Response(null, { status: 301, headers: { location: new URL("/assets/favicon.ico%20from%20S%20logo", url).href, "strict-transport-security": HSTS } });
     }
     if (url.pathname === "/health") {
       return json({ status: "ok", server: SERVER_NAME, capsule_version: CAPSULE_VERSION, d1: Boolean(env.DB) });
