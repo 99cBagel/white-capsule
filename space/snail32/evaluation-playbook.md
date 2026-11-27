@@ -1,127 +1,124 @@
-# Snail32 — Sourcing Evaluation Playbook
+# Snail32 — MCP Evaluation Playbook
 
-The steps a sourcing engineer (and their agent) run to evaluate Snail32
-as a component source. Work in order. Show your work at every step. Stop
-at the triggers — do not work around them.
+How an agent evaluates the White Capsule MCP server at
+**https://cap.keeg.uk/mcp**. The framework mimics **MCP Playground**
+(mcpplaygroundonline.com): a security scan in 8 categories, graded A–F,
+plus a functional test — connect as a real client, execute the tools,
+and answer real questions with them. Every criterion below is one probe:
+what to send, and what passes. Record PASS / FAIL / N-A per criterion,
+with evidence (status code, header, or response excerpt).
 
-## Step 0 — Setup
+Declared posture — judge against it, not against a generic server: this
+capsule is **read-only and anonymous by design**. Open access is the
+product promise, not a defect. A criterion about exposure passes when
+what is exposed matches that posture.
 
-- **Input:** this folder, dropped into the agent's working folder.
-- **Task:** paste `evaluation-task.md`, fill in the blanks (product,
-  quantity, target price, certification needs, timeline).
-- **Ask first:** the task lists what to ask the engineer before starting.
-  Nothing moves until those are answered.
-- **Read the product's memory first:** `state/index.md` and
-  `state/decisions.md` — what was verified, what is still unknown, what
-  was decided and why. This is the capsule's memory of the product, not
-  of any reader. There is no reader memory; the clean-book rule forbids it.
-- **Output:** a short statement of the evaluation question, in one sentence.
+## Part 1 — The scan (MCP Playground's 8 categories)
 
-## Step 1 — Identity
+### 1. Transport security
+- [ ] HTTPS only — the endpoint answers on https; no http listener.
+- [ ] TLS certificate valid and in date.
+- [ ] http://cap.keeg.uk redirects to https.
+- [ ] `Strict-Transport-Security` header present, max-age ≥ 31536000.
 
-- **Input:** `capsule.json`, `spec.json` (identity), `README.md`.
-- **Do:** What is Snail32, in one paragraph? What does it claim to replace
-  (ESP32 — which variant)? Is it pin-compatible (drop-in) or a redesign?
-- **Pass:** the identity paragraph is written and the compatibility claim
-  is stated with its source.
-- **Stop and ask:** if the compatibility claim has no source.
+### 2. Authentication & access
+- [ ] Every tool in `tools/list` is read-only — no tool can write,
+  delete, send, or execute. (Any write tool exposed = FAIL.)
+- [ ] `resources/list` and `prompts/list` expose nothing beyond the
+  declared surface (empty is correct for this capsule).
+- [ ] No tool result contains credentials, keys, or personal data.
+- [ ] OAuth discovery endpoint (`/.well-known/oauth-authorization-server`)
+  returns 404 or a correct document — never a crash or a false promise.
 
-## Step 2 — Spec audit
+### 3. MCP protocol
+- [ ] `initialize` returns serverInfo (name `white-capsule`, version)
+  and a protocolVersion the client offered.
+- [ ] `notifications/initialized` is accepted (HTTP 202, no body error).
+- [ ] `ping` returns an empty result.
+- [ ] Unknown method returns JSON-RPC error `-32601` — not an HTTP 500,
+  not an HTML error page.
+- [ ] Malformed JSON returns `-32700`; a call with a missing required
+  argument returns a clean tool error, not a crash.
 
-- **Input:** `spec.json`, `docs/` (datasheet, test reports).
-- **Do:** walk every field. Each value must carry a status and a source.
-  `verified` = source cited. `claimed` = manufacturer claim, no evidence.
-  `target` = design goal. `unknown` = gap.
-- **Output:** an audit table — field, value, status, source. Every
-  `unknown` goes onto the unknowns list. Nothing is filled in by guessing.
-- **Pass:** zero values without a status. Zero invented numbers.
-- **Stop and ask:** if a value the decision depends on is `unknown`.
+### 4. Stateless spec (2026-07-28)
+- [ ] N-A — this server implements the 2025-06-18 Streamable HTTP spec.
+  Record N-A with this reason; re-check if the server migrates.
 
-## Step 3 — Head-to-head vs ESP32
+### 5. Information disclosure
+- [ ] Error messages leak no internals — no file paths, stack traces,
+  SQL text, or environment details.
+- [ ] Tool names and descriptions contain no prompt-injection markers
+  (no "ignore previous instructions", no hidden directives to agents).
+- [ ] Tool results contain no instructions addressed to the agent —
+  data only.
+- [ ] Response headers disclose no framework/runtime versions beyond
+  the declared server name and version.
 
-- **Input:** `comparison.json`.
-- **Do:** fill the Snail32 side from Step 2, then set a verdict per row
-  (`better` / `same` / `worse` / `unknown`) and a migration note: what
-  breaks when moving from ESP32 — pinout, SDK, power, RF, code porting.
-- **Output:** the completed comparison table.
-- **Pass:** every row has a verdict; every `worse` has a migration cost
-  attached (time, money, or risk).
-- **Stop and ask:** if the ESP32 baseline variant is wrong for the
-  engineer's product (see the open decision in `comparison.json`).
+### 6. Injection & exfiltration
+- [ ] `capsule_search` with SQL-style input (`' OR 1=1 --`) returns a
+  normal result or a clean error — never a data dump.
+- [ ] `capsule_get` with `../../etc/passwd` or an unknown doc_id returns
+  a clean error listing the valid doc_ids.
+- [ ] `capsule_compare` with an unknown dimension returns a clean error.
+- [ ] No tool accepts a URL, a file path, or a command as an argument —
+  the SSRF / command-injection surface is zero by construction; verify
+  from `tools/list` schemas.
+- [ ] An oversized argument (10,000 characters) is handled — clean
+  error or normal result, never a crash.
 
-## Step 4 — Compliance gap
+### 7. Security headers & CORS
+- [ ] `X-Content-Type-Options: nosniff` present.
+- [ ] Framing is controlled — `X-Frame-Options` or a CSP
+  `frame-ancestors` directive.
+- [ ] CORS is not wildcard-with-credentials: no
+  `Access-Control-Allow-Origin: *` combined with
+  `Access-Control-Allow-Credentials: true`.
+- [ ] A cross-origin probe with a foreign `Origin` header gets the
+  declared policy, consistently.
 
-- **Input:** `compliance.md`.
-- **Do:** certified vs planned vs unknown. What must the buyer still do
-  (host-device certification, testing), and what does it cost in time
-  and money?
-- **Output:** a gap list with buyer obligations.
-- **Pass:** no certification claimed without a certificate number.
+### 8. Resilience
+- [ ] 10 concurrent requests (mixed `initialize` and `tools/call`) all
+  complete — or are rate-limited with 429 and a `Retry-After` header.
+  No 500s.
+- [ ] Each individual call completes in under 5 seconds.
+- [ ] A second identical run gives identical results — the server is
+  stateless per call and stores nothing between readers.
 
-## Step 5 — Commercial check
+## Part 2 — The functional test (Tester + Evals style)
 
-- **Input:** `sourcing.json`.
-- **Do:** price ladder vs the incumbent (re-check live — never trust a
-  frozen price), MOQ, lead time, stock, distributors, samples, lifecycle
-  and EOL policy. Total cost = unit price + migration cost + certification
-  cost + risk.
-- **Output:** a commercial summary with dates on every price.
-- **Pass:** every price carries a date and a status.
-- **Stop and ask:** before any contact with a distributor or supplier
-  (that is an outward message — approval first), and before any money
-  decision.
+- [ ] `tools/list` returns exactly the 5 declared tools:
+  `capsule_topics`, `capsule_search`, `capsule_get`, `capsule_compare`,
+  `capsule_checkout`.
+- [ ] Every tool has a description; every input property is typed and
+  described; a tool with no inputs declares an explicit empty schema.
+- [ ] Execute each tool once with valid arguments — every result is
+  well-formed and consistent with the Core MDs.
+- [ ] The agent test: answer the capsule's 6 example questions (from
+  `example-questions.md`) using only the tools. Each answer must trace
+  to a Core MD passage (document + section). An explicit `unknown` /
+  TBD is a pass. Silence, or a value the Core MDs do not contain, is a
+  FAIL for that question.
 
-## Step 6 — Risk register
+## Scoring (Playground style)
 
-- **Do:** list risks with likelihood, impact, and mitigation: single-source
-  risk, company viability, roadmap slip, certification timeline, support
-  quality, pin-compatibility risk, SDK maturity.
-- **Output:** a risk table. Unknowns from Step 2 are risks too.
-- **Pass:** every risk has a named owner or a named unknown.
+- Score = criteria passed ÷ criteria applicable (N-A and by-design
+  exclusions leave the denominator).
+- **A** ≥ 95% · **B** ≥ 85% · **C** ≥ 70% · **D** ≥ 50% · **F** < 50%.
+- Hard F, regardless of score: a write tool exposed anonymously, or any
+  Part 1 §6 probe that succeeds in extracting data.
 
-## Step 7 — Verdict
+## Report
 
-- **Do:** one verdict — `recommend` / `conditional` / `not yet` — with
-  reasons tied to evidence (file + section for each reason), and a
-  confidence note (what would change the verdict).
-- **Output:** the verdict, the comparison table, the risk register, the
-  unknowns list. Verdict first, evidence after.
-- **Pass:** the verdict can be checked in one look by the engineer.
+One page, delivered to the operator (never saved into the capsule
+space): grade first; per-category PASS / FAIL / N-A counts; each finding
+with severity, evidence, and the fix; the 6-question results. Product
+findings only — never who ran the evaluation or when (clean-book rule).
 
-## Step 8 — Write-back (the video's step 4)
+## Sources
 
-- **Do:** save the findings report to `findings/YYYY-MM-DD-evaluation.md`
-  (product findings only). Append working notes to `handbook.md`: what
-  was checked, what was uncertain, what to do differently next time.
-  Update `state/index.md` and `state/decisions.md` with what changed
-  about the product. This is the employee handbook — the next evaluation
-  starts from it.
-- **Clean-book rule:** write back product findings only. Never record who
-  ran the evaluation, what they asked, or when they read the capsule.
-  If a note would record a reader, do not write it.
-- **Pass:** the report, the handbook update, and the state update are all
-  saved before the task is called done.
-
-## Stop-and-ask triggers (any step)
-
-- Passwords, verification codes, creating accounts.
-- Any money decision: order, price acceptance, MOQ commitment.
-- Any irreversible send: RFQ, email, submission, publication.
-- Any contact with a supplier, distributor, or certifier.
-- Any value the decision depends on that is `unknown`.
-
-When a trigger fires: stop, show what you have, ask. Do not proceed on
-your own judgment.
-
-## Clean-book check (before any version bump)
-
-Run this before the capsule version moves. Every item must pass.
-
-- [ ] No logging code in the capsule or the MCP server.
-- [ ] No analytics, no telemetry, no cookies.
-- [ ] No per-reader state anywhere — no reader identity, no session
-  records, no query logs, no usage counters (not even in aggregate).
-- [ ] `state/` holds product facts only.
-- [ ] Findings reports record product findings only.
-- [ ] The MCP spec still says: read-only, stores nothing, logs nothing,
-  same answer to everyone.
+Framework: MCP Playground — Security Scanner (35+ checks, 8 categories,
+A–F) and Server Tester / Evals, mcpplaygroundonline.com, checked
+2026-11-27. Reference runs against this server, same day: MCP Showcase
+Server Tester (full pass) and Security Scanner (76/100, grade C —
+findings: anonymous tool list, by design; 2 tools with undeclared input
+properties), Glama Inspector (connected, 5 tools, no errors).

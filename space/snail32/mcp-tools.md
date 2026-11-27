@@ -25,11 +25,11 @@ are a read window onto them.
 | `capsule_search` | `query`, `topics?`, `limit?` (1–10, default 5) | Matching passages, each with file, section, value, status, source. |
 | `capsule_get` | `doc_id` (`spec` / `comparison` / `sourcing` / `compliance` / `docs`), `section?` | The full document or section, with statuses and sources. |
 | `capsule_compare` | `dimension?` | Head-to-head rows vs the ESP32 baseline, with verdicts and migration notes. |
-| `capsule_sourcing` | — | Commercial facts: price ladder (dated), MOQ, lead time, stock, lifecycle. |
+| `capsule_checkout` | — | Commercial facts: price ladder (dated), MOQ, lead time, stock, lifecycle. |
 
 Keep the tool count small. Three tools are enough to start
 (`capsule_topics`, `capsule_search`, `capsule_get`); add `capsule_compare`
-and `capsule_sourcing` when the comparison and commercial data are real.
+and `capsule_checkout` when the comparison and commercial data are real.
 
 ## Grounding rules (the server must enforce these)
 

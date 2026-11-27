@@ -1,0 +1,26 @@
+{
+  "capsule": "snail32",
+  "note": "Mockup manifest \u2014 concept demo only, not real product documentation.",
+  "expected_docs": [
+    {
+      "file": "snail32-datasheet.pdf",
+      "kind": "datasheet",
+      "status": "draft"
+    },
+    {
+      "file": "snail32-pinout.png",
+      "kind": "pinout diagram",
+      "status": "draft"
+    },
+    {
+      "file": "snail32-sdk-quickstart.md",
+      "kind": "SDK guide",
+      "status": "draft"
+    },
+    {
+      "file": "snail32-reference-designs.pdf",
+      "kind": "reference designs",
+      "status": "draft"
+    }
+  ]
+}

@@ -1,15 +1,16 @@
 // White Capsule MCP server — Snail32.
 // Read-only, no auth, stores nothing, logs nothing (clean-book rule).
-// Data lives in D1 (database `white-capsule`), imported from the capsule
-// files by src/import-to-d1.mjs. The files are the source of truth; D1 is
-// a derived read copy.
+// Source of truth: the 4 Core MD documents in space/snail32/capsules/
+// (datasheet, pinout, SDK quickstart, reference designs). Data lives in
+// D1 (database `white-capsule`), imported from those documents by
+// src/import-to-d1.mjs; D1 is a derived read copy of the documents.
 //
 // Transport: Streamable HTTP, protocol 2025-06-18. Hand-rolled JSON-RPC,
 // same shape as devices-control-worker (no SDK, no dependencies).
 
 import { EXAMPLE_QUESTIONS_MD } from "./example-questions.js";
 
-const CAPSULE_VERSION = "0.4.0";
+const CAPSULE_VERSION = "0.5.0";
 const SERVER_NAME = "white-capsule";
 const PROTOCOL_VERSION = "2025-06-18";
 const HSTS = "max-age=31536000; includeSubDomains";
@@ -17,29 +18,30 @@ const HSTS = "max-age=31536000; includeSubDomains";
 const INSTRUCTIONS = "Preloaded from space/snail32/example-questions.md — when the user wants example questions about Snail32, suggest three from this list.\n\n" + EXAMPLE_QUESTIONS_MD;
 
 const TOPICS = [
-  { id: "spec", description: "Structured Snail32 spec — every field with value, status, source." },
-  { id: "comparison", description: "Head-to-head vs the ESP32-S3 baseline, with verdicts and migration notes." },
-  { id: "sourcing", description: "Commercial facts — price ladder (dated), MOQ, lead time, stock, lifecycle." },
-  { id: "compliance", description: "Certifications: certified / planned / unknown, plus buyer obligations." },
-  { id: "docs", description: "Source documents the capsule rests on — all 9 expected, all missing." },
-  { id: "playbook", description: "The sourcing evaluation, step by step (evaluation-playbook.md)." },
+  { id: "datasheet", description: "Snail32 datasheet — spec tables vs the ESP32-S3 reference, head-to-head comparison, certifications, ordering information." },
+  { id: "pinout", description: "Reference pin map (ESP32-S3-WROOM-1, verified) with the Snail32 position per pin, strapping pins, and the drop-in question." },
+  { id: "sdk", description: "SDK quickstart — the real ESP-IDF flow on ESP32-S3 and the Snail32 position at each step, including porting." },
+  { id: "reference-designs", description: "Five concept reference designs adapted from real ESP32 applications, with their Snail32 TBD blockers." },
+  { id: "docs", description: "The capsule's document manifest — the 4 Core documents and their status." },
 ];
+
+const DOC_IDS = ["datasheet", "pinout", "sdk", "reference-designs", "docs"];
 
 const MCP_TOOLS = [
   {
     name: "capsule_topics",
     description: "List the capsule's sections.",
-    inputSchema: { type: "object", additionalProperties: false },
+    inputSchema: { type: "object", additionalProperties: false, properties: {} },
   },
   {
     name: "capsule_search",
-    description: "Search the capsule by text. Returns matching passages, each with file, section, value, status, source.",
+    description: "Search the capsule's Core documents by text. Returns matching table facts and document passages, each with doc and section.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
       properties: {
         query: { type: "string", description: "Text to search for." },
-        topics: { type: "array", items: { type: "string" }, description: "Optional section filter: spec, comparison, sourcing, compliance." },
+        topics: { type: "array", items: { type: "string" }, description: "Optional doc filter: datasheet, pinout, sdk, reference-designs." },
         limit: { type: "integer", description: "Max results, 1-10, default 5." },
       },
       required: ["query"],
@@ -47,20 +49,20 @@ const MCP_TOOLS = [
   },
   {
     name: "capsule_get",
-    description: "Return a whole capsule document (or one spec section), with statuses and sources.",
+    description: "Return a Core document (or one section of it) as markdown, with the section's parsed table facts. doc_id 'docs' returns the document manifest.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
       properties: {
-        doc_id: { type: "string", description: "spec, comparison, sourcing, compliance, or docs." },
-        section: { type: "string", description: "For spec: one top-level section (io, mcu, memory, operating, package_board, power, radio, security, software)." },
+        doc_id: { type: "string", description: "datasheet, pinout, sdk, reference-designs, or docs." },
+        section: { type: "string", description: "Optional: part of a section title within the document, e.g. 'Power' or 'Head-to-head'." },
       },
       required: ["doc_id"],
     },
   },
   {
     name: "capsule_compare",
-    description: "Head-to-head rows vs the ESP32-S3 baseline, with verdicts and migration notes.",
+    description: "Head-to-head rows vs the ESP32-S3 baseline, from the datasheet's comparison table — with verdicts and migration notes.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -70,9 +72,9 @@ const MCP_TOOLS = [
     },
   },
   {
-    name: "capsule_sourcing",
-    description: "Commercial facts: price ladder (dated), MOQ, lead time, stock, lifecycle.",
-    inputSchema: { type: "object", additionalProperties: false },
+    name: "capsule_checkout",
+    description: "Ordering information from the datasheet: price ladder, MOQ, lead time, samples — all targets or TBD, not quotes.",
+    inputSchema: { type: "object", additionalProperties: false, properties: {} },
   },
 ];
 
@@ -111,6 +113,13 @@ function escLike(s) {
 function likePattern(query) {
   return `%${escLike(query)}%`;
 }
+function snippet(body, query, width = 220) {
+  const flat = String(body).replace(/\s+/g, " ");
+  const i = flat.toLowerCase().indexOf(query.toLowerCase());
+  if (i < 0) return flat.slice(0, width);
+  const start = Math.max(0, i - Math.floor(width / 3));
+  return (start > 0 ? "…" : "") + flat.slice(start, start + width) + (start + width < flat.length ? "…" : "");
+}
 
 async function capsuleSearch(args, env) {
   const db = requireDb(env);
@@ -118,38 +127,24 @@ async function capsuleSearch(args, env) {
   if (!query) return toolResult({ error: "query is required." }, true);
   const limit = Math.min(10, Math.max(1, Number.isInteger(args?.limit) ? args.limit : 5));
   const wanted = Array.isArray(args?.topics) && args.topics.length > 0
-    ? new Set(args.topics.map(String))
+    ? new Set(args.topics.map(String).filter((t) => DOC_IDS.includes(t) && t !== "docs"))
     : null;
   const pat = likePattern(query);
   const matches = [];
 
-  if (!wanted || wanted.has("spec")) {
-    for (const r of await qAll(db,
-      "SELECT field, section, value, status, source FROM spec_fields WHERE field LIKE ? ESCAPE '\\' OR value LIKE ? ESCAPE '\\' OR source LIKE ? ESCAPE '\\' LIMIT ?",
-      [pat, pat, pat, limit])) {
-      matches.push({ file: "spec.json", section: r.section, field: r.field, value: r.value, status: r.status, source: r.source, capsule_version: CAPSULE_VERSION });
-    }
+  const factRows = await qAll(db,
+    `SELECT doc, section, item, "reference", snail32, status, note FROM fact_rows WHERE item LIKE ? ESCAPE '\\' OR "reference" LIKE ? ESCAPE '\\' OR snail32 LIKE ? ESCAPE '\\' OR note LIKE ? ESCAPE '\\' LIMIT 50`,
+    [pat, pat, pat, pat]);
+  for (const r of factRows) {
+    if (wanted && !wanted.has(r.doc)) continue;
+    matches.push({ kind: "fact", doc: r.doc, section: r.section, item: r.item, reference: r.reference, snail32: r.snail32, status: r.status, note: r.note, capsule_version: CAPSULE_VERSION });
   }
-  if (!wanted || wanted.has("comparison")) {
-    for (const r of await qAll(db,
-      "SELECT dimension, snail32_value, snail32_status, snail32_source, baseline_value, baseline_status, baseline_source, verdict, migration_note FROM comparison_rows WHERE dimension LIKE ? ESCAPE '\\' OR snail32_value LIKE ? ESCAPE '\\' OR baseline_value LIKE ? ESCAPE '\\' OR migration_note LIKE ? ESCAPE '\\' LIMIT ?",
-      [pat, pat, pat, pat, limit])) {
-      matches.push({ file: "comparison.json", section: "comparison", dimension: r.dimension, snail32: { value: r.snail32_value, status: r.snail32_status, source: r.snail32_source }, baseline: { value: r.baseline_value, status: r.baseline_status, source: r.baseline_source }, verdict: r.verdict, migration_note: r.migration_note, capsule_version: CAPSULE_VERSION });
-    }
-  }
-  if (!wanted || wanted.has("sourcing")) {
-    for (const r of await qAll(db,
-      "SELECT key, value, status, source FROM sourcing WHERE key LIKE ? ESCAPE '\\' OR value LIKE ? ESCAPE '\\' LIMIT ?",
-      [pat, pat, limit])) {
-      matches.push({ file: "sourcing.json", section: "sourcing", field: r.key, value: r.value, status: r.status, source: r.source, capsule_version: CAPSULE_VERSION });
-    }
-  }
-  if (!wanted || wanted.has("compliance")) {
-    for (const r of await qAll(db,
-      "SELECT item, status, notes FROM compliance_rows WHERE item LIKE ? ESCAPE '\\' OR notes LIKE ? ESCAPE '\\' LIMIT ?",
-      [pat, pat, limit])) {
-      matches.push({ file: "compliance.md", section: "compliance", field: r.item, value: r.status, status: r.status, source: null, notes: r.notes, capsule_version: CAPSULE_VERSION });
-    }
+  const sectionRows = await qAll(db,
+    "SELECT doc, title, body FROM doc_sections WHERE body LIKE ? ESCAPE '\\' LIMIT 50",
+    [pat]);
+  for (const r of sectionRows) {
+    if (wanted && !wanted.has(r.doc)) continue;
+    matches.push({ kind: "passage", doc: r.doc, section: r.title, snippet: snippet(r.body, query), capsule_version: CAPSULE_VERSION });
   }
   return toolResult({ query, matches: matches.slice(0, limit) });
 }
@@ -157,73 +152,65 @@ async function capsuleSearch(args, env) {
 async function capsuleGet(args, env) {
   const db = requireDb(env);
   const docId = typeof args?.doc_id === "string" ? args.doc_id : "";
-  if (docId === "spec") {
-    const section = typeof args?.section === "string" && args.section ? args.section : null;
-    const rows = section
-      ? await qAll(db, "SELECT field, section, value, status, source FROM spec_fields WHERE section = ? ORDER BY field", [section])
-      : await qAll(db, "SELECT field, section, value, status, source FROM spec_fields ORDER BY field", []);
-    if (section && rows.length === 0) return toolResult({ error: `Unknown spec section: ${section}` }, true);
-    return toolResult({ doc_id: "spec", section, capsule_version: CAPSULE_VERSION, fields: rows.map((r) => ({ field: r.field, value: r.value, status: r.status, source: r.source })) });
-  }
-  if (docId === "comparison") {
-    const rows = await qAll(db, "SELECT dimension, snail32_value, snail32_status, snail32_source, baseline_value, baseline_status, baseline_source, verdict, migration_note FROM comparison_rows ORDER BY dimension", []);
-    return toolResult({ doc_id: "comparison", capsule_version: CAPSULE_VERSION, baseline: { product: await qMeta(db, "baseline_product"), source: await qMeta(db, "baseline_source") }, rows: rows.map((r) => ({ dimension: r.dimension, snail32: { value: r.snail32_value, status: r.snail32_status, source: r.snail32_source }, baseline: { value: r.baseline_value, status: r.baseline_status, source: r.baseline_source }, verdict: r.verdict, migration_note: r.migration_note })) });
-  }
-  if (docId === "sourcing") {
-    const rows = await qAll(db, "SELECT key, value, status, source FROM sourcing ORDER BY key", []);
-    return toolResult({ doc_id: "sourcing", capsule_version: CAPSULE_VERSION, entries: rows.map((r) => ({ key: r.key, value: r.value, status: r.status, source: r.source })) });
-  }
-  if (docId === "compliance") {
-    const rows = await qAll(db, "SELECT item, status, cert_no, evidence, date, notes FROM compliance_rows ORDER BY item", []);
-    return toolResult({ doc_id: "compliance", capsule_version: CAPSULE_VERSION, rows: rows.map((r) => ({ item: r.item, status: r.status, cert_no: r.cert_no, evidence: r.evidence, date: r.date, notes: r.notes })) });
-  }
   if (docId === "docs") {
     const rows = await qAll(db, "SELECT file, kind, status, note FROM docs ORDER BY file", []);
     return toolResult({ doc_id: "docs", capsule_version: CAPSULE_VERSION, docs: rows.map((r) => ({ file: r.file, kind: r.kind, status: r.status, note: r.note })) });
   }
-  return toolResult({ error: `Unknown doc_id: ${docId} (spec, comparison, sourcing, compliance, docs)` }, true);
+  if (!DOC_IDS.includes(docId)) {
+    return toolResult({ error: `Unknown doc_id: ${docId} (${DOC_IDS.join(", ")})` }, true);
+  }
+  const sections = await qAll(db, "SELECT idx, title, body FROM doc_sections WHERE doc = ? ORDER BY idx", [docId]);
+  const sectionArg = typeof args?.section === "string" && args.section ? args.section : null;
+  let picked = sections;
+  if (sectionArg) {
+    const hit = sections.find((s) => s.title.toLowerCase().includes(sectionArg.toLowerCase()));
+    if (!hit) return toolResult({ error: `Unknown section in ${docId}: ${sectionArg} (sections: ${sections.map((s) => s.title).join(" · ")})` }, true);
+    picked = [hit];
+  }
+  const facts = await qAll(db, `SELECT section, item, "reference", snail32, status, note FROM fact_rows WHERE doc = ? ORDER BY rowid`, [docId]);
+  const pickedTitles = new Set(picked.map((s) => s.title));
+  return toolResult({
+    doc_id: docId,
+    section: sectionArg,
+    capsule_version: CAPSULE_VERSION,
+    sections: picked.map((s) => ({ title: s.title, markdown: s.body })),
+    facts: facts
+      .filter((f) => pickedTitles.has(f.section))
+      .map((f) => ({ section: f.section, item: f.item, reference: f.reference, snail32: f.snail32, status: f.status, note: f.note })),
+  });
 }
 
 async function capsuleCompare(args, env) {
   const db = requireDb(env);
   const dimension = typeof args?.dimension === "string" && args.dimension ? args.dimension : null;
-  const rows = dimension
-    ? await qAll(db, "SELECT dimension, snail32_value, snail32_status, snail32_source, baseline_value, baseline_status, baseline_source, verdict, migration_note FROM comparison_rows WHERE dimension = ?", [dimension])
-    : await qAll(db, "SELECT dimension, snail32_value, snail32_status, snail32_source, baseline_value, baseline_status, baseline_source, verdict, migration_note FROM comparison_rows ORDER BY dimension", []);
-  if (dimension && rows.length === 0) return toolResult({ error: `Unknown dimension: ${dimension}` }, true);
+  const rows = await qAll(db,
+    `SELECT item, "reference", snail32, status, note FROM fact_rows WHERE doc = 'datasheet' AND section LIKE '%Head-to-head%' ORDER BY rowid`, []);
+  const picked = dimension
+    ? rows.filter((r) => r.item.toLowerCase() === dimension.toLowerCase())
+    : rows;
+  if (dimension && picked.length === 0) return toolResult({ error: `Unknown dimension: ${dimension}` }, true);
   return toolResult({
     capsule_version: CAPSULE_VERSION,
     baseline: { product: await qMeta(db, "baseline_product"), source: await qMeta(db, "baseline_source") },
-    rows: rows.map((r) => ({ dimension: r.dimension, snail32: { value: r.snail32_value, status: r.snail32_status, source: r.snail32_source }, baseline: { value: r.baseline_value, status: r.baseline_status, source: r.baseline_source }, verdict: r.verdict, migration_note: r.migration_note })),
+    rows: picked.map((r) => ({ dimension: r.item, baseline: { value: r.reference }, snail32: { value: r.snail32, status: r.status }, note: r.note })),
   });
 }
 
-async function capsuleSourcing(args, env) {
+async function capsuleCheckout(args, env) {
   const db = requireDb(env);
-  const rows = await qAll(db, "SELECT key, value, status, source FROM sourcing ORDER BY key", []);
-  const byKey = new Map(rows.map((r) => [r.key, r]));
+  const rows = await qAll(db,
+    `SELECT item, snail32, status, note FROM fact_rows WHERE doc = 'datasheet' AND section LIKE '%Ordering%' ORDER BY rowid`, []);
   const pricing = [];
-  for (let i = 0; ; i++) {
-    const qty = byKey.get(`pricing.${i}.qty`);
-    if (!qty) break;
-    pricing.push({
-      qty: qty.value,
-      price: byKey.get(`pricing.${i}.price`)?.value ?? null,
-      currency: byKey.get(`pricing.${i}.currency`)?.value ?? null,
-      status: byKey.get(`pricing.${i}.status`)?.value ?? null,
-    });
+  const entries = [];
+  for (const r of rows) {
+    if (r.item.startsWith("Qty ")) pricing.push({ qty: r.item.slice(4), price: r.snail32, status: r.status });
+    else entries.push({ item: r.item, value: r.snail32, status: r.status, note: r.note });
   }
-  pricing.sort((a, b) => Number(a.qty) - Number(b.qty));
-  const entry = (key) => {
-    const r = byKey.get(key);
-    return r ? { value: r.value, status: r.status, source: r.source } : null;
-  };
   return toolResult({
     capsule_version: CAPSULE_VERSION,
+    note: "Ordering information from the datasheet (§11). All figures are concept targets or TBD — not quotes.",
     pricing,
-    moq: entry("moq"),
-    lead_time_weeks: entry("availability.lead_time_weeks"),
-    entries: rows.filter((r) => !r.key.startsWith("pricing.")).map((r) => ({ key: r.key, value: r.value, status: r.status, source: r.source })),
+    entries,
   });
 }
 
@@ -234,7 +221,7 @@ async function callTool(name, args, env) {
     if (name === "capsule_search") return capsuleSearch(args, env);
     if (name === "capsule_get") return capsuleGet(args, env);
     if (name === "capsule_compare") return capsuleCompare(args, env);
-    if (name === "capsule_sourcing") return capsuleSourcing(args, env);
+    if (name === "capsule_checkout") return capsuleCheckout(args, env);
     return toolResult({ error: `Unknown tool: ${name}` }, true);
   } catch (error) {
     const message = error?.message || String(error);
