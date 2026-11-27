@@ -1,128 +1,108 @@
-# Snail32 — White Capsule
+# White Capsule — Snail32
 
 > **Status: MOCKUP CONCEPT — not shipping.**
-> Nothing in this capsule is a shippable product yet. Snail32 values are
-> concept TARGETS — made up 2026-11-25 at the owner's request for the
-> mockup. Not measurements. Any `target` must be re-proven before it is
+> Snail32 values are concept **targets**, set at the owner's request for
+> the mockup. Not measurements. A target must be re-proven before it is
 > quoted as a spec.
 
 ## What this is
 
-A White Capsule makes product information and engineering specifications
-accessible to AI agents. Through MCP, it supports AI-assisted evaluation.
-It delivers structured, reliable, and auditable product knowledge that
-agents can use.
+A White Capsule turns a product's white papers into structured,
+auditable knowledge that AI agents read through MCP. This capsule holds
+one product: **Snail32**, a concept microcontroller board positioned
+against the ESP32-S3.
 
-This capsule is for one product: **Snail32**, our ESP32-competing board,
-written so a sourcing engineer — working with an AI agent the way the
-「什麼是agent？」 video shows — can evaluate it as a component source and
-verify every claim.
+- Service: **White Capsule Service** — https://cap.keeg.uk/
+- MCP endpoint: https://cap.keeg.uk/mcp (read-only, no auth, no logging)
 
-## How the engineer uses it (the video's workflow)
+## The capsule = 4 Core MDs + 3 MDs
 
-1. **Folder first.** Drop this whole folder into the agent's working folder.
-   Everything the evaluation needs is inside it. No browsing, no hunting.
-2. **Say it in words.** Paste the task in `evaluation-task.md`: what to do,
-   where the materials are, what to ask about first.
-3. **Watch it work, verify the result.** The agent follows
-   `evaluation-playbook.md` step by step, shows its work, and stops at the
-   listed triggers. Every verdict cites a file and a section.
-4. **Save the method.** Findings go into `findings/`, the working notes
-   go back into `handbook.md` — the employee handbook (員工手冊) — and
-   the product state is updated in `state/` — so the second evaluation
-   starts from the first. Product findings only: never record who ran the
-   evaluation, what they asked, or when.
+The Core MDs are the capsule's **only source of truth**. Everything the
+MCP serves is parsed from them.
 
-## Contents
+**Core — `space/snail32/capsules/`**
 
-```
-white-capsule/
-├── README.md                  this file — index + rules
-├── capsule.json               manifest: identity, version, file inventory
-├── spec.json                  structured Snail32 spec (concept targets)
-├── comparison.json            head-to-head vs ESP32-S3 (baseline verified)
-├── sourcing.json              commercial facts: price, MOQ, lead time, lifecycle
-├── compliance.md              certifications: certified / planned / unknown
-├── evaluation-playbook.md     the sourcing evaluation, step by step
-├── handbook.md                the agent's employee handbook
-├── evaluation-task.md         the paste-in task for the agent
-├── mcp-tools.md               the MCP surface that serves this capsule
-├── CHANGELOG.md               audit trail — every change, dated
-├── state/
-│   ├── index.md               product state: verified / unknown / next step
-│   └── decisions.md           dated product decisions with reasons
-├── .claude/
-│   └── settings.json          optional Claude Code hook: SessionStart only
-├── docs/
-│   └── docs-manifest.json     the source documents this capsule rests on
-├── findings/
-│   └── README.md              where evaluation reports go
-├── src/
-│   └── worker.js              MCP server (Cloudflare Worker, D1-backed)
-├── wrangler.jsonc             worker config: D1 binding, cap.keeg.uk/mcp route
-├── scripts/
-│   └── seed.mjs               builds the D1 seed SQL from the capsule files
-├── package.json               scripts: seed, deploy, test
-└── assets/
-    ├── logo-1024.png          logo, 1024×1024, transparent background
-    ├── icon-256.png           large icon, 256×256, transparent background
-    ├── icon-64.png            small icon, 64×64, transparent background
-    ├── favicon.ico            favicon (16/32/48/64)
-    ├── white-capsule-logo.psd layered work copy (8 layers, transparent background)
-    └── white-capsule-logo.svg vector trace (5 colors, transparent background)
+| Document | Holds |
+| --- | --- |
+| `snail32-datasheet.md` | Spec tables vs the ESP32-S3 reference, the head-to-head comparison, certifications, ordering information |
+| `snail32-pinout.md` | The verified ESP32-S3-WROOM-1 pin map with the Snail32 position per pin; the drop-in question |
+| `snail32-sdk-quickstart.md` | The real ESP-IDF flow on ESP32-S3 and the Snail32 position at each step, including porting |
+| `snail32-reference-designs.md` | Five concept designs adapted from real ESP32 applications, with their Snail32 TBD blockers |
+
+`docs-manifest.json` in the same folder lists these four and their
+status. `drafts/` holds unlisted drafts; the MCP does not serve them.
+
+**Supporting — `space/snail32/`**
+
+| Document | Role |
+| --- | --- |
+| `example-questions.md` | Six starter questions, preloaded to agents at connect (served dynamically from D1 — see below) |
+| `mcp-tools.md` | The contract for the five MCP tools |
+| `evaluation-playbook.md` | How the MCP service is evaluated: the scan + functional test, graded A–F |
+
+## How it runs
+
+```text
+Core MDs ──► src/import-to-d1.mjs ──► D1 (derived read copy) ──► src/worker.js ──► MCP
 ```
 
-## The three rules of this capsule
+- The Worker cannot read files, so `src/import-to-d1.mjs` parses the
+  Core MDs (+ the manifest, + `example-questions.md`) into SQL; applying
+  it rebuilds D1's tables (`meta`, `docs`, `doc_sections`, `fact_rows`).
+- Tools: `capsule_topics` · `capsule_search` · `capsule_get` ·
+  `capsule_compare` · `capsule_checkout`.
+- The example questions live in D1 `meta` and the Worker reads them at
+  initialize time. The .md is the only copy — there is no second copy
+  in code to drift.
+- **Evaluation documents are not in D1.** D1 holds only what the
+  capsule says about the board; the playbook is an evaluator's
+  instrument and is read as a file.
+- Edit a Core MD → re-run the importer → D1 follows. Nothing flows back.
 
-1. **Structured.** Numbers live in JSON with named fields, not buried in
-   prose. An agent can read `spec.json` and compare field by field.
-2. **Reliable.** Every value carries a status and a source. See the
-   confidence legend in `capsule.json`:
-   `verified` / `claimed` / `target` / `unknown`.
-   A `target` is a design goal, not a measurement. An `unknown` is a gap,
-   not a zero.
-3. **Auditable.** Every change is dated in `CHANGELOG.md`. Every claim
-   traces to a document in `docs/`. If the document is not in `docs/`,
-   the claim does not exist.
+## llms.txt pairing
 
-## Clean-book rules (biblical)
+Every page pairs with an **llms.txt companion** that tells a visiting
+agent what the page is, and how to behave:
 
-This capsule is a clean book. A book doesn't know who read it, which
-pages they opened, or how long they lingered — and neither does this
-capsule.
+1. *This page is about …*
+2. You can browse the content — or connect to the MCP directory.
+3. **Ask-also** (when a webpage is present): the agent browses freely,
+   and also pitches and asks, in these words:
+   *"MCP is the modern standard for AI agents — I answer from this
+   site's structured data directly, not by interpreting a webpage.
+   Say MCP, if you want me to connect to the MCP?"*
+   The trigger is the keyword **MCP** — "yes" is too generic. The
+   pitch rides on the first and second ask only; after that the
+   reminder is brief: *"Say MCP, if want me to connect."* The keyword
+   gates the connection, never the browsing.
+4. **If the user says MCP:** connect through the chat's custom-connector feature
+   (never fetch the endpoint as a webpage), open the directory first
+   (topics tool), tell the user what it holds, offer the example
+   questions. If the chat cannot add custom connectors, say so plainly
+   and stop.
 
-- **No reader info.** No reader identity, no session records, no query
-  logs. Nothing about who used the capsule is ever written down.
-- **No tracking.** No analytics, no telemetry, no per-reader state, no
-  cookies. No usage counters, not even in aggregate.
-- **Product state only.** `state/` holds facts about Snail32 — decisions,
-  verification status, open product questions. It never holds anything
-  about a reader.
-- **The server neither stores nor logs.** The MCP server is read-only,
-  stores nothing, logs nothing, and gives the same answer to everyone.
-  No personalization, no per-reader rate limiting.
+At cap.keeg.uk this lives in two places: `public/llms.txt` (served at
+https://cap.keeg.uk/llms.txt) and the **FOR AI AGENTS** notice at the
+top of the landing page. The same pairing is the standard for the
+owner's other sites, with visibility classes: public MCP · no MCP ·
+gated (companion states the gate only — nothing private is ever
+published in an llms.txt) · silent MCP (the companion omits it).
 
-The vendor gives up all usage metrics. That is the price — and the point:
-a reader can trust this capsule precisely because it cannot report on
-them.
+## Rules
 
-## What the agent must never do alone
+- **Status language.** Every value is one of: *verified* (the ESP32-S3
+  reference, from the Espressif datasheet) · *target* (a Snail32 design
+  goal) · *TBD / unknown* (a gap — not a zero, not a guess).
+- **Clean book.** The server is read-only, stores nothing, logs
+  nothing, sets no cookies, and gives the same answer to everyone. No
+  reader information of any kind is recorded.
+- **Deploys.** Push to GitHub → GitHub Actions deploys the Worker and
+  the static site. D1 changes only when the importer is run.
 
-From the video — three things the engineer always does himself:
+## Layout
 
-1. Passwords, verification codes, creating accounts — never.
-2. Money decisions (place an order, accept a price, commit to an MOQ) — never.
-3. Anything irreversible (send an RFQ, publish, submit) — show first,
-   proceed only on explicit approval.
-
-These are written into `handbook.md` and `evaluation-task.md`, not left
-to memory.
-
-## What is still missing
-
-Real measurements, real documents, real certifications. The spec values,
-price ladder, and lead time are concept `target`s — invented for the
-mockup, not measured. All 9 expected source documents are missing and
-all 10 compliance rows are `unknown`. Fill them from real measurements
-and real documents — or leave them `unknown`. A capsule that says
-"unknown" is honest. A capsule that guesses is useless.
+```text
+public/            landing page, assets, llms.txt (served as static files)
+src/               worker.js (the MCP server) · import-to-d1.mjs
+space/snail32/     the capsule: capsules/ (Core) + the 3 supporting MDs
+```
