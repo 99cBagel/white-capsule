@@ -61,32 +61,25 @@ Core MDs ──► src/import-to-d1.mjs ──► D1 (derived read copy) ──�
 
 ## llms.txt pairing
 
-Every page pairs with an **llms.txt companion** that tells a visiting
-agent what the page is, and how to behave:
+Every page pairs with an **llms.txt companion** for **agentic
+browsing**. The companion has nothing to do with MCP: connecting to
+the MCP is a separate path (STEP 1 above), not covered in any
+llms.txt. The companion tells a visiting agent:
 
 1. *This page is about …*
-2. You can browse the content — or connect to the MCP directory.
-3. **Ask-also** (when a webpage is present): the agent browses freely,
-   and also pitches and asks, in these words:
-   *"MCP is the modern standard for AI agents — I answer from this
-   site's structured data directly, not by interpreting a webpage.
-   Say MCP, if you want me to connect to the MCP?"*
-   The trigger is the keyword **MCP** — "yes" is too generic. The
-   pitch rides on the first and second ask only; after that the
-   reminder is brief: *"Say MCP, if want me to connect."* The keyword
-   gates the connection, never the browsing.
-4. **If the user says MCP:** connect through the chat's custom-connector feature
-   (never fetch the endpoint as a webpage), open the directory first
-   (topics tool), tell the user what it holds, offer the example
-   questions. If the chat cannot add custom connectors, say so plainly
-   and stop.
+2. Browse this page with the user — also find out the user's
+   interests.
+3. Say what the page is, and offer **2 example questions selected
+   from the companion's list**, matched to the user's interests:
+   *"Which do you want me to explore?"* — the questions **nudge the
+   browsing path**.
 
 At cap.keeg.uk this lives in two places: `public/llms.txt` (served at
 https://cap.keeg.uk/llms.txt) and the **FOR AI AGENTS** notice at the
 top of the landing page. The same pairing is the standard for the
-owner's other sites, with visibility classes: public MCP · no MCP ·
-gated (companion states the gate only — nothing private is ever
-published in an llms.txt) · silent MCP (the companion omits it).
+owner's other sites; companions are generated from a per-site
+registry, never hand-copied, and a gated site's companion states the
+gate only — nothing private is ever published in an llms.txt.
 
 ## Rules
 

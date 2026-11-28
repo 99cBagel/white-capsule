@@ -60,10 +60,11 @@ const line = (s) => out.push(s);
 line(`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);`);
 line(`CREATE TABLE IF NOT EXISTS docs (file TEXT PRIMARY KEY, kind TEXT, status TEXT NOT NULL, note TEXT);`);
 line(`CREATE TABLE IF NOT EXISTS doc_sections (doc TEXT NOT NULL, idx INTEGER NOT NULL, title TEXT, body TEXT, PRIMARY KEY (doc, idx));`);
+line(`CREATE TABLE IF NOT EXISTS doc_texts (doc TEXT PRIMARY KEY, markdown TEXT);`);
 line(`CREATE TABLE IF NOT EXISTS fact_rows (doc TEXT NOT NULL, section TEXT, item TEXT, "reference" TEXT, snail32 TEXT, status TEXT, note TEXT);`);
 // Retired by the Core-MD migration (2026-11-27): the old JSON-fed tables.
 for (const t of ["spec_fields", "comparison_rows", "sourcing", "compliance_rows"]) line(`DROP TABLE IF EXISTS ${t};`);
-for (const t of ["meta", "docs", "doc_sections", "fact_rows"]) line(`DELETE FROM ${t};`);
+for (const t of ["meta", "docs", "doc_sections", "fact_rows", "doc_texts"]) line(`DELETE FROM ${t};`);
 
 for (const [k, v] of Object.entries(META)) {
   line(`INSERT INTO meta (key, value) VALUES (${esc(k)}, ${esc(v)});`);
@@ -186,7 +187,12 @@ function mapFact(docId, sectionTitle, header, cells) {
 // --- Import the Core MDs ----------------------------------------------------
 for (const d of manifest.expected_docs) {
   const { id, contentFile } = docIdFor(d.file);
-  const sections = splitSections(readText(contentFile));
+  const raw = readText(contentFile);
+  // The full original markdown, newlines kept (esc() flattens them) —
+  // the browsing routes (/capsules) render from this; the MCP reads
+  // the parsed sections and facts.
+  line(`INSERT INTO doc_texts (doc, markdown) VALUES (${esc(id)}, '${raw.replace(/'/g, "''")}');`);
+  const sections = splitSections(raw);
   for (const s of sections) {
     line(`INSERT INTO doc_sections (doc, idx, title, body) VALUES (${esc(id)}, ${s.idx}, ${esc(s.title)}, ${esc(s.body)});`);
     for (const t of parseTables(s.body)) {
